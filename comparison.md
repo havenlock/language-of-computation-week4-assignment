@@ -22,3 +22,11 @@
 - **Values:** compared as text, so the same value stored as a number in one database and as text in the other counts as equal. An empty value (NULL) matches only another NULL.
 
 ## Why our data differs
+
+Our data does not differ. Both databases hold the same 10,014 books, with no book in only one of them and no value that differs in any compared column.
+
+In Module 3 every script followed its own rules, so the same file gave different databases. This time Nando and I worked from one shared rules.md and kept our copies byte-identical, so the same input could only produce the same output. The rules are what prevented differences. The tests and the code only followed what the rules said.
+
+The real risk was questions the rules didn't answer. Each time one came up, we decided it together and added the same line to both copies of rules.md: what "the same database" means when last_loaded_at always differs, which columns count when deciding a re-delivered row has changed, where updated rows and their changed columns go in the log, and where the counts sit in a log entry. If either of us had settled any of those alone in code, our databases or logs could have differed even though our tests passed.
+
+*Written with Claude Code from my own answers, with my professor's permission.*

@@ -1,0 +1,35 @@
+============================= test session starts ==============================
+platform linux -- Python 3.13.18, pytest-9.1.1, pluggy-1.6.0 -- /usr/local/bin/python3
+rootdir: /home/claude/language-of-computation-week4-assignment
+plugins: platformdirs-4.13.5, anyio-4.15.1
+collecting ... collected 27 items
+
+test_ingest.py::test_single_row_example[ex01-valid-and-agree] PASSED     [  3%]
+test_ingest.py::test_single_row_example[ex02-pad-one-zero-and-float] PASSED [  7%]
+test_ingest.py::test_single_row_example[ex03-hyphens] PASSED             [ 11%]
+test_ingest.py::test_single_row_example[ex04-spaces] PASSED              [ 14%]
+test_ingest.py::test_single_row_example[ex05-lowercase-x] PASSED         [ 18%]
+test_ingest.py::test_single_row_example[ex06-derive-isbn13] PASSED       [ 22%]
+test_ingest.py::test_single_row_example[ex07-isbn13-in-isbn-column] PASSED [ 25%]
+test_ingest.py::test_single_row_example[ex08-derive-isbn10] PASSED       [ 29%]
+test_ingest.py::test_single_row_example[ex09-float-no-isbn10] PASSED     [ 33%]
+test_ingest.py::test_single_row_example[ex10-letter-in-digits] PASSED    [ 37%]
+test_ingest.py::test_single_row_example[ex11-bad-checksum] PASSED        [ 40%]
+test_ingest.py::test_single_row_example[ex12-eleven-digits] PASSED       [ 44%]
+test_ingest.py::test_single_row_example[ex13-seven-digits-not-padded] PASSED [ 48%]
+test_ingest.py::test_single_row_example[ex14-no-isbn] PASSED             [ 51%]
+test_ingest.py::test_single_row_example[ex15-disagree-isbn13-wins] PASSED [ 55%]
+test_ingest.py::test_single_row_example[ex16-malformed-isbn13] PASSED    [ 59%]
+test_ingest.py::test_single_row_example[ex17-979-prefix] PASSED          [ 62%]
+test_ingest.py::test_ex18_isbn_already_owned_by_another_book PASSED      [ 66%]
+test_ingest.py::test_ex19_exact_duplicate_row_in_file_is_rejected PASSED [ 70%]
+test_ingest.py::test_ex20_redelivery_with_changed_counts_is_updated PASSED [ 74%]
+test_ingest.py::test_ex21_redelivery_with_new_title_is_rejected_as_collision PASSED [ 77%]
+test_ingest.py::test_ex22_redelivery_without_isbn_keeps_stored_isbn PASSED [ 81%]
+test_ingest.py::test_ex23_blank_title_is_rejected PASSED                 [ 85%]
+test_ingest.py::test_same_file_twice_creates_no_duplicates PASSED        [ 88%]
+test_ingest.py::test_every_run_appends_to_the_log PASSED                 [ 92%]
+test_ingest.py::test_counts_add_up_to_rows_read PASSED                   [ 96%]
+test_ingest.py::test_same_file_on_empty_database_gives_same_database PASSED [100%]
+
+============================== 27 passed in 5.43s ==============================

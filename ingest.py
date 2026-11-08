@@ -87,9 +87,9 @@ def resolve_isbns(raw10, raw13):
         pass
     elif isbn10_valid(n10):
         v10 = n10
-    elif re.fullmatch(r"\d{1,9}", n10) and isbn10_valid(n10.zfill(10)):
-        v10 = n10.zfill(10)
-        warnings.append(("isbn", raw10, v10, "leading zeros restored"))
+    elif re.fullmatch(r"\d{9}", n10) and isbn10_valid("0" + n10):
+        v10 = "0" + n10
+        warnings.append(("isbn", raw10, v10, "lost leading zero restored"))
     elif isbn13_valid(n10) and n13 == "":
         moved13 = n10
         warnings.append(("isbn13", raw10, n10, "ISBN-13 found in isbn column; moved to isbn13"))
@@ -112,9 +112,13 @@ def resolve_isbns(raw10, raw13):
     # --- reconcile the two (rules 3 and 4) -----------------------------
     if v10 and v13:
         if isbn10_to_13(v10) != v13:
-            warnings.append(("isbn/isbn13", f"{v10} / {v13}", None,
-                             f"isbn and isbn13 disagree ({v10} converts to {isbn10_to_13(v10)}); both discarded"))
-            v10 = v13 = None
+            # Rule 3: isbn13 wins; the ISBN-10 is derived again from it (none for 979).
+            discarded = v10
+            v10 = isbn13_to_10(v13)
+            warnings.append(("isbn", raw10, v10,
+                             f"isbn {discarded} disagrees with isbn13 {v13} "
+                             f"({discarded} converts to {isbn10_to_13(discarded)}); isbn13 wins, "
+                             + ("isbn10 derived from isbn13" if v10 else "no ISBN-10 exists for a 979 ISBN-13")))
     elif v10 and not v13:
         v13 = isbn10_to_13(v10)
         warnings.append(("isbn13", raw13, v13,
@@ -139,8 +143,10 @@ def describe_bad10(s):
         return "letter in digits"
     if len(s) == 10:
         return "checksum fails"
-    if re.fullmatch(r"\d{1,9}", s):
-        return f"{len(s)} digits; zero-padding to 10 fails checksum"
+    if re.fullmatch(r"\d{9}", s):
+        return "9 digits; restoring one leading zero fails checksum"
+    if re.fullmatch(r"\d{1,8}", s):
+        return f"{len(s)} digits; only one lost leading zero may be restored"
     if len(s) == 13:
         return "13-digit value in isbn column but isbn13 also present, or checksum fails"
     return f"wrong length ({len(s)} characters)"
@@ -218,30 +224,36 @@ def ingest(path):
             title = row.get("title", "").strip()
             bid_raw = row.get("book_id", "").strip()
 
+            raw10, raw13 = row.get("isbn", ""), row.get("isbn13", "")
+
             # Rule 6.1
-            if not bid_raw.isdigit() or not title:
-                reject(rejected_rows, counts, bid_raw, title, "missing book_id or title")
+            if not bid_raw.isdigit():
+                reject(rejected_rows, counts, bid_raw, title, raw10, raw13,
+                       f"missing or invalid book_id ({bid_raw!r})")
+                continue
+            if not title:
+                reject(rejected_rows, counts, bid_raw, title, raw10, raw13, "missing title")
                 continue
             book_id = int(bid_raw)
 
             # Rule 6.2
             sig = tuple(row.get(c, "") for c in CSV_COLUMNS)
             if sig in seen_rows:
-                reject(rejected_rows, counts, book_id, title, "duplicate row in file")
+                reject(rejected_rows, counts, book_id, title, raw10, raw13, "duplicate row in file")
                 continue
             seen_rows.add(sig)
 
-            isbn10, isbn13, warns = resolve_isbns(row.get("isbn", ""), row.get("isbn13", ""))
+            isbn10, isbn13, warns = resolve_isbns(raw10, raw13)
 
-            # Rule 6.3
+            # Rule 5: an ISBN owned by another book is not stored; the row still loads.
             if isbn13:
                 owner = con.execute(
                     "SELECT book_id FROM books WHERE isbn13 = ? AND book_id != ?", (isbn13, book_id)
                 ).fetchone()
                 if owner:
-                    reject(rejected_rows, counts, book_id, title,
-                           f"ISBN {isbn13} already assigned to book {owner['book_id']}")
-                    continue
+                    warns.append(("isbn13", isbn13, None,
+                                  f"ISBN already assigned to book {owner['book_id']}"))
+                    isbn10 = isbn13 = None
 
             incoming = {c: row.get(c, "") for c in CSV_COLUMNS if c not in ("isbn", "isbn13")}
             incoming.update(isbn_raw=row.get("isbn", ""), isbn13_raw=row.get("isbn13", ""),
@@ -257,7 +269,11 @@ def ingest(path):
                 record_warnings(warnings_out, book_id, title, "loaded", warns)
                 continue
 
-            # Rule 7: re-delivery
+            # Rule 7: re-delivery. A changed title or author is a collision (rule 6.3).
+            if (existing["title"] or "") != incoming["title"] or (existing["authors"] or "") != incoming["authors"]:
+                reject(rejected_rows, counts, book_id, title, raw10, raw13,
+                       f"collision: title or author changed for book {book_id}")
+                continue
             if incoming["isbn13"] is None and existing["isbn13"] is not None:
                 incoming["isbn10"], incoming["isbn13"] = existing["isbn10"], existing["isbn13"]
                 warns = [w for w in warns if w[3] != "no ISBN"]
@@ -291,9 +307,9 @@ def ingest(path):
     return entry
 
 
-def reject(rejected_rows, counts, book_id, title, reason):
+def reject(rejected_rows, counts, book_id, title, isbn, isbn13, reason):
     counts["rejected"] += 1
-    rejected_rows.append(dict(book_id=book_id, title=title, reason=reason))
+    rejected_rows.append(dict(book_id=book_id, title=title, isbn=isbn, isbn13=isbn13, reason=reason))
 
 
 def record_warnings(out, book_id, title, action, warns):

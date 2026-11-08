@@ -88,7 +88,7 @@
       const notLoaded = e.rejected || 0;
       const repairs = (e.warnings || []).filter(w => w.after);
       const flags = (e.warnings || []).filter(w => !w.after && w.field !== 'row');
-      const updates = (e.warnings || []).filter(w => w.field === 'row');
+      const updates = e.updated_rows || [];
       const status = notLoaded ? ['bad', `${notLoaded} not loaded`] : flags.length ? ['warn', 'loaded with warnings'] : ['ok', 'all loaded'];
       const t = e.database_totals || {};
       return `
@@ -141,7 +141,7 @@
           ${table(updates, [
             { h: 'book_id', f: r => r.book_id, mono: true },
             { h: 'title', f: r => r.title },
-            { h: 'what changed', f: r => r.reason.replace('updated columns: ', '') },
+            { h: 'what changed', f: r => (r.changed_columns || []).join(', ') },
           ], 50)}
         </section>
         <section class="totals">
@@ -163,8 +163,8 @@
       else if (h3.startsWith('Repairs')) { rows = w.filter(x => x.after); cols = [
         { h: 'book_id', f: r => r.book_id, mono: true }, { h: 'title', f: r => r.title }, { h: 'field', f: r => r.field, mono: true },
         { h: 'before', f: r => r.before === '' ? '(empty)' : r.before, mono: true }, { h: 'after', f: r => r.after, mono: true }, { h: 'rule', f: r => r.reason } ]; }
-      else { rows = w.filter(x => x.field === 'row'); cols = [
-        { h: 'book_id', f: r => r.book_id, mono: true }, { h: 'title', f: r => r.title }, { h: 'what changed', f: r => r.reason.replace('updated columns: ', '') } ]; }
+      else { rows = run.updated_rows || []; cols = [
+        { h: 'book_id', f: r => r.book_id, mono: true }, { h: 'title', f: r => r.title }, { h: 'what changed', f: r => (r.changed_columns || []).join(', ') } ]; }
       sec.innerHTML = `<h3>${esc(h3)}</h3>` + table(rows, cols);
     }));
   }

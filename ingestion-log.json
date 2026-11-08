@@ -1,6 +1,6 @@
 [
   {
-    "run_at": "2026-11-08T19:03:03+00:00",
+    "run_at": "2026-11-08T19:36:43+00:00",
     "source_file": "books.csv",
     "rows_read": 10000,
     "loaded": 10000,
@@ -149545,6 +149545,7 @@
         "reason": "float export lost the last digit; replaced by value derived from isbn"
       }
     ],
+    "updated_rows": [],
     "database_totals": {
       "books": 10000,
       "with_isbn13": 8253,
@@ -149552,7 +149553,7 @@
     }
   },
   {
-    "run_at": "2026-11-08T19:03:03+00:00",
+    "run_at": "2026-11-08T19:36:43+00:00",
     "source_file": "books.csv",
     "rows_read": 10000,
     "loaded": 0,
@@ -149561,6 +149562,7 @@
     "rejected": 0,
     "rejected_rows": [],
     "warnings": [],
+    "updated_rows": [],
     "database_totals": {
       "books": 10000,
       "with_isbn13": 8253,
@@ -149568,7 +149570,7 @@
     }
   },
   {
-    "run_at": "2026-11-08T19:03:04+00:00",
+    "run_at": "2026-11-08T19:36:44+00:00",
     "source_file": "books-batch2.csv",
     "rows_read": 31,
     "loaded": 14,
@@ -149602,15 +149604,6 @@
         "before": "9.78140130858e+12",
         "after": "9781401308582",
         "reason": "float export lost the last digit; replaced by value derived from isbn"
-      },
-      {
-        "book_id": 132,
-        "title": "The Five People You Meet in Heaven",
-        "action": "updated",
-        "field": "row",
-        "before": null,
-        "after": null,
-        "reason": "updated columns: ratings_count, work_ratings_count, ratings_5"
       },
       {
         "book_id": 10012,
@@ -149658,15 +149651,6 @@
         "reason": "float export lost the last digit; replaced by value derived from isbn"
       },
       {
-        "book_id": 14,
-        "title": "Animal Farm",
-        "action": "updated",
-        "field": "row",
-        "before": null,
-        "after": null,
-        "reason": "updated columns: ratings_count, work_ratings_count, ratings_5"
-      },
-      {
         "book_id": 13,
         "title": "1984",
         "action": "updated",
@@ -149683,15 +149667,6 @@
         "before": "9.78045152494e+12",
         "after": "9780451524935",
         "reason": "float export lost the last digit; replaced by value derived from isbn"
-      },
-      {
-        "book_id": 13,
-        "title": "1984",
-        "action": "updated",
-        "field": "row",
-        "before": null,
-        "after": null,
-        "reason": "updated columns: ratings_count, work_ratings_count, ratings_5"
       },
       {
         "book_id": 10011,
@@ -149773,15 +149748,44 @@
         "before": "9.7814169143e+12",
         "after": "9781416914303",
         "reason": "float export lost the last digit; replaced by value derived from isbn"
+      }
+    ],
+    "updated_rows": [
+      {
+        "book_id": 132,
+        "title": "The Five People You Meet in Heaven",
+        "changed_columns": [
+          "ratings_count",
+          "work_ratings_count",
+          "ratings_5"
+        ]
+      },
+      {
+        "book_id": 14,
+        "title": "Animal Farm",
+        "changed_columns": [
+          "ratings_count",
+          "work_ratings_count",
+          "ratings_5"
+        ]
+      },
+      {
+        "book_id": 13,
+        "title": "1984",
+        "changed_columns": [
+          "ratings_count",
+          "work_ratings_count",
+          "ratings_5"
+        ]
       },
       {
         "book_id": 134,
         "title": "City of Glass (The Mortal Instruments, #3)",
-        "action": "updated",
-        "field": "row",
-        "before": null,
-        "after": null,
-        "reason": "updated columns: ratings_count, work_ratings_count, ratings_5"
+        "changed_columns": [
+          "ratings_count",
+          "work_ratings_count",
+          "ratings_5"
+        ]
       }
     ],
     "database_totals": {

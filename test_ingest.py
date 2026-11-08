@@ -98,7 +98,9 @@ def test_ex20_redelivery_with_changed_counts_is_updated(ws):
     entry = ws.run(ws.write_csv([ws.row(132, title="Book 132", ratings_count=200)]))
     assert entry["updated"] == 1
     assert ws.book(132)["ratings_count"] == "200"
-    assert mentions(warnings_for(entry, 132), "ratings_count"), "rule 7: the log lists the changed columns"
+    rows = [r for r in entry["updated_rows"] if str(r["book_id"]) == "132"]
+    assert rows, "rule 9: every updated row is listed in updated_rows"
+    assert "ratings_count" in rows[0]["changed_columns"], "rule 7: the log lists the changed columns"
 
 
 def test_ex21_redelivery_with_new_title_is_rejected_as_collision(ws):

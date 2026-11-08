@@ -213,7 +213,7 @@ def ingest(path):
     con = open_db()
 
     counts = dict(rows_read=0, loaded=0, updated=0, skipped=0, rejected=0)
-    rejected_rows, warnings_out = [], []
+    rejected_rows, warnings_out, updated_rows = [], [], []
     seen_rows = set()              # exact rows seen in this file (rule 6.2)
 
     with open(path, newline="", encoding="utf-8") as f:
@@ -289,7 +289,7 @@ def ingest(path):
             sets = ", ".join(f"{c} = ?" for c in incoming)
             con.execute(f"UPDATE books SET {sets} WHERE book_id = ?", list(incoming.values()) + [book_id])
             counts["updated"] += 1
-            warns.append(("row", None, None, "updated columns: " + ", ".join(changed)))
+            updated_rows.append(dict(book_id=book_id, title=title, changed_columns=changed))
             record_warnings(warnings_out, book_id, title, "updated", warns)
 
     con.commit()
@@ -302,7 +302,8 @@ def ingest(path):
     con.close()
 
     entry = dict(run_at=run_at, source_file=source, **counts,
-                 rejected_rows=rejected_rows, warnings=warnings_out, database_totals=totals)
+                 rejected_rows=rejected_rows, warnings=warnings_out, updated_rows=updated_rows,
+                 database_totals=totals)
     append_log(entry)
     return entry
 

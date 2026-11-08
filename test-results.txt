@@ -32,4 +32,4 @@ test_ingest.py::test_every_run_appends_to_the_log PASSED                 [ 92%]
 test_ingest.py::test_counts_add_up_to_rows_read PASSED                   [ 96%]
 test_ingest.py::test_same_file_on_empty_database_gives_same_database PASSED [100%]
 
-============================== 27 passed in 5.43s ==============================
+============================== 27 passed in 4.84s ==============================

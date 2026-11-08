@@ -1,0 +1,99 @@
+============================= test session starts ==============================
+platform linux -- Python 3.13.18, pytest-9.1.1, pluggy-1.6.0 -- /usr/local/bin/python3
+rootdir: /home/claude/language-of-computation-week4-assignment
+plugins: platformdirs-4.13.5, anyio-4.15.1
+collecting ... collected 27 items
+
+test_ingest.py::test_single_row_example[ex01-valid-and-agree] PASSED     [  3%]
+test_ingest.py::test_single_row_example[ex02-pad-one-zero-and-float] PASSED [  7%]
+test_ingest.py::test_single_row_example[ex03-hyphens] PASSED             [ 11%]
+test_ingest.py::test_single_row_example[ex04-spaces] PASSED              [ 14%]
+test_ingest.py::test_single_row_example[ex05-lowercase-x] PASSED         [ 18%]
+test_ingest.py::test_single_row_example[ex06-derive-isbn13] PASSED       [ 22%]
+test_ingest.py::test_single_row_example[ex07-isbn13-in-isbn-column] PASSED [ 25%]
+test_ingest.py::test_single_row_example[ex08-derive-isbn10] PASSED       [ 29%]
+test_ingest.py::test_single_row_example[ex09-float-no-isbn10] PASSED     [ 33%]
+test_ingest.py::test_single_row_example[ex10-letter-in-digits] PASSED    [ 37%]
+test_ingest.py::test_single_row_example[ex11-bad-checksum] PASSED        [ 40%]
+test_ingest.py::test_single_row_example[ex12-eleven-digits] PASSED       [ 44%]
+test_ingest.py::test_single_row_example[ex13-seven-digits-not-padded] FAILED [ 48%]
+test_ingest.py::test_single_row_example[ex14-no-isbn] PASSED             [ 51%]
+test_ingest.py::test_single_row_example[ex15-disagree-isbn13-wins] FAILED [ 55%]
+test_ingest.py::test_single_row_example[ex16-malformed-isbn13] PASSED    [ 59%]
+test_ingest.py::test_single_row_example[ex17-979-prefix] PASSED          [ 62%]
+test_ingest.py::test_ex18_isbn_already_owned_by_another_book FAILED      [ 66%]
+test_ingest.py::test_ex19_exact_duplicate_row_in_file_is_rejected PASSED [ 70%]
+test_ingest.py::test_ex20_redelivery_with_changed_counts_is_updated PASSED [ 74%]
+test_ingest.py::test_ex21_redelivery_with_new_title_is_rejected_as_collision FAILED [ 77%]
+test_ingest.py::test_ex22_redelivery_without_isbn_keeps_stored_isbn PASSED [ 81%]
+test_ingest.py::test_ex23_blank_title_is_rejected PASSED                 [ 85%]
+test_ingest.py::test_same_file_twice_creates_no_duplicates PASSED        [ 88%]
+test_ingest.py::test_every_run_appends_to_the_log PASSED                 [ 92%]
+test_ingest.py::test_counts_add_up_to_rows_read PASSED                   [ 96%]
+test_ingest.py::test_same_file_on_empty_database_gives_same_database PASSED [100%]
+
+=================================== FAILURES ===================================
+____________ test_single_row_example[ex13-seven-digits-not-padded] _____________
+
+ws = <conftest.Workspace object at 0x7feced13ef90>, isbn = '7442912'
+isbn13 = '', want10 = None, want13 = None, warn = True, warn_text = None
+
+    @pytest.mark.parametrize("isbn,isbn13,want10,want13,warn,warn_text", SINGLE_ROW_EXAMPLES)
+    def test_single_row_example(ws, isbn, isbn13, want10, want13, warn, warn_text):
+        entry = ws.run(ws.write_csv([ws.row(1, isbn=isbn, isbn13=isbn13)]))
+    
+        assert entry["loaded"] == 1 and entry["rejected"] == 0, "the row must be loaded (rules 3-4)"
+        book = ws.book(1)
+        assert book is not None
+>       assert book["isbn10"] == want10
+E       AssertionError: assert '0007442912' == None
+
+test_ingest.py:59: AssertionError
+______________ test_single_row_example[ex15-disagree-isbn13-wins] ______________
+
+ws = <conftest.Workspace object at 0x7feced2af040>, isbn = '1555550126'
+isbn13 = '9781555550134', want10 = '1555550134', want13 = '9781555550134'
+warn = True, warn_text = '1555550126'
+
+    @pytest.mark.parametrize("isbn,isbn13,want10,want13,warn,warn_text", SINGLE_ROW_EXAMPLES)
+    def test_single_row_example(ws, isbn, isbn13, want10, want13, warn, warn_text):
+        entry = ws.run(ws.write_csv([ws.row(1, isbn=isbn, isbn13=isbn13)]))
+    
+        assert entry["loaded"] == 1 and entry["rejected"] == 0, "the row must be loaded (rules 3-4)"
+        book = ws.book(1)
+        assert book is not None
+>       assert book["isbn10"] == want10
+E       AssertionError: assert None == '1555550134'
+
+test_ingest.py:59: AssertionError
+_________________ test_ex18_isbn_already_owned_by_another_book _________________
+
+ws = <conftest.Workspace object at 0x7feced2b1b20>
+
+    def test_ex18_isbn_already_owned_by_another_book(ws):
+        entry = ws.run(ws.write_csv([
+            ws.row(9, title="Angels & Demons", isbn="1416524797"),
+            ws.row(10013, title="Paper Moons", isbn="1416524797"),
+        ]))
+>       assert entry["loaded"] == 2 and entry["rejected"] == 0, "rule 5: the second book is still loaded"
+E       AssertionError: rule 5: the second book is still loaded
+E       assert (1 == 2)
+
+test_ingest.py:80: AssertionError
+_________ test_ex21_redelivery_with_new_title_is_rejected_as_collision _________
+
+ws = <conftest.Workspace object at 0x7feced1af6b0>
+
+    def test_ex21_redelivery_with_new_title_is_rejected_as_collision(ws):
+        ws.run(ws.write_csv([ws.row(25, title="Original Title")]))
+        entry = ws.run(ws.write_csv([ws.row(25, title="A Different Title")]))
+>       assert entry["rejected"] == 1 and entry["updated"] == 0
+E       assert (0 == 1)
+
+test_ingest.py:107: AssertionError
+=========================== short test summary info ============================
+FAILED test_ingest.py::test_single_row_example[ex13-seven-digits-not-padded]
+FAILED test_ingest.py::test_single_row_example[ex15-disagree-isbn13-wins] - A...
+FAILED test_ingest.py::test_ex18_isbn_already_owned_by_another_book - Asserti...
+FAILED test_ingest.py::test_ex21_redelivery_with_new_title_is_rejected_as_collision
+========================= 4 failed, 23 passed in 4.35s =========================

@@ -82,6 +82,7 @@ Nothing else is rejected.
   - `isbn_raw` and `isbn13_raw`: exactly what the file had under those headers
   - `last_source_file` and `last_loaded_at`
 - A UNIQUE index on `isbn13` (where not NULL) enforces rule 5.
+- Two databases hold **the same data** when they have the same books and every column matches, except `last_loaded_at`. That column only records when a row was loaded.
 
 ## 9. The log and the report
 

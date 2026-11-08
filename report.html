@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ingestion Report</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --ink:#1f2430; --mute:#6b7280; --line:#e5e7eb;
+          --ok:#15803d; --warn:#b45309; --bad:#b91c1c; --okbg:#ecfdf5; --warnbg:#fffbeb; --badbg:#fef2f2; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system, "Segoe UI", Helvetica, Arial, sans-serif; background:var(--bg); color:var(--ink); }
+  header { background:var(--ink); color:#fff; padding:18px 24px; display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+  header h1 { font-size:18px; margin:0; flex:1; }
+  header .sub { font-size:12px; opacity:.75; }
+  button, label.btn { background:#fff; color:var(--ink); border:0; border-radius:6px; padding:8px 14px; font-size:14px; font-weight:600; cursor:pointer; }
+  main { max-width:1100px; margin:0 auto; padding:20px 16px 60px; }
+  .empty { text-align:center; color:var(--mute); padding:80px 20px; font-size:15px; }
+  .run { background:var(--card); border:1px solid var(--line); border-radius:10px; margin-bottom:18px; overflow:hidden; }
+  .run > summary { list-style:none; cursor:pointer; padding:14px 18px; display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+  .run > summary::-webkit-details-marker { display:none; }
+  .badge { font-size:11px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; padding:3px 8px; border-radius:999px; }
+  .badge.ok { background:var(--okbg); color:var(--ok); } .badge.warn { background:var(--warnbg); color:var(--warn); } .badge.bad { background:var(--badbg); color:var(--bad); }
+  .file { font-family:Menlo, Consolas, monospace; font-size:14px; font-weight:600; }
+  .when { color:var(--mute); font-size:13px; }
+  .idx { color:var(--mute); font-size:12px; margin-left:auto; }
+  .stats { display:grid; grid-template-columns:repeat(auto-fit, minmax(120px,1fr)); gap:10px; padding:0 18px 14px; }
+  .stat { background:var(--bg); border-radius:8px; padding:10px 12px; }
+  .stat .v { font-size:22px; font-weight:700; line-height:1; } .stat .l { font-size:11px; color:var(--mute); margin-top:4px; }
+  .stat.bad .v { color:var(--bad); } .stat.warn .v { color:var(--warn); } .stat.ok .v { color:var(--ok); }
+  section { border-top:1px solid var(--line); padding:12px 18px; }
+  section h3 { margin:0 0 8px; font-size:13px; letter-spacing:1px; text-transform:uppercase; color:var(--mute); }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th { text-align:left; font-size:11px; color:var(--mute); font-weight:600; padding:6px 8px; border-bottom:1px solid var(--line); }
+  td { padding:6px 8px; border-bottom:1px solid #f1f2f4; vertical-align:top; }
+  td.mono { font-family:Menlo, Consolas, monospace; font-size:12px; white-space:nowrap; }
+  .none { color:var(--mute); font-size:13px; }
+  .totals { font-size:13px; color:var(--mute); }
+  .totals b { color:var(--ink); }
+  .more { background:none; color:var(--mute); font-weight:500; font-size:12px; padding:6px 0; }
+  .err { background:var(--badbg); color:var(--bad); padding:12px 18px; border-radius:8px; margin-bottom:16px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Books ingestion report <span class="sub" id="loaded-from"></span></h1>
+  <label class="btn">Open ingestion-log.json <input type="file" id="file" accept=".json,application/json" hidden></label>
+</header>
+<main>
+  <div id="out" class="empty">Click <b>Open ingestion-log.json</b> and pick the log file next to <code>ingest.py</code>. Runs are shown newest first.</div>
+</main>
+<script>
+(function () {
+  const input = document.getElementById('file');
+  const out = document.getElementById('out');
+  const from = document.getElementById('loaded-from');
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+  input.addEventListener('change', () => {
+    const f = input.files[0]; if (!f) return;
+    const r = new FileReader();
+    r.onload = () => {
+      try { render(JSON.parse(r.result), f.name); }
+      catch (e) { out.className = ''; out.innerHTML = `<div class="err">Could not read ${esc(f.name)}: ${esc(e.message)}</div>`; }
+    };
+    r.readAsText(f);
+  });
+
+  function fmtWhen(iso) {
+    const d = new Date(iso); return isNaN(d) ? esc(iso) : d.toLocaleString();
+  }
+
+  function table(rows, cols, limit) {
+    if (!rows || !rows.length) return '<div class="none">None</div>';
+    const shown = limit ? rows.slice(0, limit) : rows;
+    let h = '<table><thead><tr>' + cols.map(c => `<th>${esc(c.h)}</th>`).join('') + '</tr></thead><tbody>';
+    for (const r of shown) h += '<tr>' + cols.map(c => `<td class="${c.mono ? 'mono' : ''}">${esc(c.f(r))}</td>`).join('') + '</tr>';
+    h += '</tbody></table>';
+    if (limit && rows.length > limit) h += `<button class="more" data-more>Show all ${rows.length} rows</button>`;
+    return h;
+  }
+
+  function render(log, name) {
+    if (!Array.isArray(log)) throw new Error('log is not a JSON array of runs');
+    from.textContent = `— ${name}, ${log.length} run${log.length === 1 ? '' : 's'}`;
+    out.className = '';
+    const runs = log.map((e, i) => ({ ...e, _n: i + 1 })).reverse();
+    out.innerHTML = runs.map((e, i) => {
+      const notLoaded = e.rejected || 0;
+      const repairs = (e.warnings || []).filter(w => w.after);
+      const flags = (e.warnings || []).filter(w => !w.after && w.field !== 'row');
+      const updates = (e.warnings || []).filter(w => w.field === 'row');
+      const status = notLoaded ? ['bad', `${notLoaded} not loaded`] : flags.length ? ['warn', 'loaded with warnings'] : ['ok', 'all loaded'];
+      const t = e.database_totals || {};
+      return `
+      <details class="run" ${i === 0 ? 'open' : ''}>
+        <summary>
+          <span class="badge ${status[0]}">${status[1]}</span>
+          <span class="file">${esc(e.source_file)}</span>
+          <span class="when">${fmtWhen(e.run_at)}</span>
+          <span class="idx">run #${e._n}</span>
+        </summary>
+        <div class="stats">
+          <div class="stat"><div class="v">${e.rows_read ?? 0}</div><div class="l">rows read</div></div>
+          <div class="stat ok"><div class="v">${e.loaded ?? 0}</div><div class="l">loaded (new)</div></div>
+          <div class="stat"><div class="v">${e.updated ?? 0}</div><div class="l">updated</div></div>
+          <div class="stat"><div class="v">${e.skipped ?? 0}</div><div class="l">skipped (already present)</div></div>
+          <div class="stat ${notLoaded ? 'bad' : ''}"><div class="v">${notLoaded}</div><div class="l">rejected</div></div>
+          <div class="stat ${flags.length ? 'warn' : ''}"><div class="v">${flags.length}</div><div class="l">loaded without a usable ISBN</div></div>
+        </div>
+        <section>
+          <h3>Rows not loaded — need a person</h3>
+          ${table(e.rejected_rows, [
+            { h: 'book_id', f: r => r.book_id, mono: true },
+            { h: 'title', f: r => r.title },
+            { h: 'reason', f: r => r.reason },
+          ])}
+        </section>
+        <section>
+          <h3>Loaded, but ISBN could not be trusted — look these up</h3>
+          ${table(flags, [
+            { h: 'book_id', f: r => r.book_id, mono: true },
+            { h: 'title', f: r => r.title },
+            { h: 'field', f: r => r.field, mono: true },
+            { h: 'value in file', f: r => r.before === '' ? '(empty)' : r.before, mono: true },
+            { h: 'why', f: r => r.reason },
+          ], 50)}
+        </section>
+        <section>
+          <h3>Repairs made automatically (before → after)</h3>
+          ${table(repairs, [
+            { h: 'book_id', f: r => r.book_id, mono: true },
+            { h: 'title', f: r => r.title },
+            { h: 'field', f: r => r.field, mono: true },
+            { h: 'before', f: r => r.before === '' ? '(empty)' : r.before, mono: true },
+            { h: 'after', f: r => r.after, mono: true },
+            { h: 'rule', f: r => r.reason },
+          ], 50)}
+        </section>
+        <section>
+          <h3>Re-delivered rows that changed</h3>
+          ${table(updates, [
+            { h: 'book_id', f: r => r.book_id, mono: true },
+            { h: 'title', f: r => r.title },
+            { h: 'what changed', f: r => r.reason.replace('updated columns: ', '') },
+          ], 50)}
+        </section>
+        <section class="totals">
+          Database after this run: <b>${t.books ?? '?'}</b> books · <b>${t.with_isbn13 ?? '?'}</b> with an ISBN-13 · <b>${t.without_any_isbn ?? '?'}</b> with no ISBN at all
+        </section>
+      </details>`;
+    }).join('');
+
+    out.querySelectorAll('[data-more]').forEach(btn => btn.addEventListener('click', () => {
+      const sec = btn.closest('section'); const idx = [...out.querySelectorAll('section')].indexOf(sec);
+      // Re-render that section's table without a limit
+      const run = runs[[...out.querySelectorAll('.run')].indexOf(btn.closest('.run'))];
+      const h3 = sec.querySelector('h3').textContent;
+      let rows, cols;
+      const w = run.warnings || [];
+      if (h3.startsWith('Loaded, but')) { rows = w.filter(x => !x.after && x.field !== 'row'); cols = [
+        { h: 'book_id', f: r => r.book_id, mono: true }, { h: 'title', f: r => r.title }, { h: 'field', f: r => r.field, mono: true },
+        { h: 'value in file', f: r => r.before === '' ? '(empty)' : r.before, mono: true }, { h: 'why', f: r => r.reason } ]; }
+      else if (h3.startsWith('Repairs')) { rows = w.filter(x => x.after); cols = [
+        { h: 'book_id', f: r => r.book_id, mono: true }, { h: 'title', f: r => r.title }, { h: 'field', f: r => r.field, mono: true },
+        { h: 'before', f: r => r.before === '' ? '(empty)' : r.before, mono: true }, { h: 'after', f: r => r.after, mono: true }, { h: 'rule', f: r => r.reason } ]; }
+      else { rows = w.filter(x => x.field === 'row'); cols = [
+        { h: 'book_id', f: r => r.book_id, mono: true }, { h: 'title', f: r => r.title }, { h: 'what changed', f: r => r.reason.replace('updated columns: ', '') } ]; }
+      sec.innerHTML = `<h3>${esc(h3)}</h3>` + table(rows, cols);
+    }));
+  }
+})();
+</script>
+</body>
+</html>
